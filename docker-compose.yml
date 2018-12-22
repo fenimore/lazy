@@ -1,0 +1,23 @@
+version: '3.3'
+
+services:
+  worker_1:
+     build: .
+     ports:
+       - "7071:7070"
+     restart: always
+  worker_2:
+     build: .
+     ports:
+       - "7072:7070"
+     restart: always
+  worker_3:
+     build: .
+     ports:
+       - "7073:7070"
+     restart: always
+  worker_4:
+     build: .
+     ports:
+       - "7074:7070"
+     restart: always
