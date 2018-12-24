@@ -1,7 +1,7 @@
 package lazy
 
 import (
-	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -11,28 +11,34 @@ func TestMapRDD(t *testing.T) {
 		Pair{"b", 2},
 		Pair{"c", 3},
 		Pair{"d", 4},
-		// Pair{[]byte("a"), []byte("1")},
-		// Pair{[]byte("b"), []byte("3")},
-		// Pair{[]byte("c"), []byte("4")},
-		// Pair{[]byte("d"), []byte("2")},
 	}
 
 	ctx := new(Context)
 	rdd := ctx.Parallelize(testData, 4)
 	mappedRDD := rdd.mapFunc(func(row Pair) Pair {
-		fmt.Println(row.Val)
-		fmt.Println(row.Val + 1)
 		return Pair{
 			row.Key,
 			row.Val + 1,
 		}
 	})
 
-	fmt.Println(rdd)
-	fmt.Println(mappedRDD)
-	fmt.Println(mappedRDD.collect())
-
 	if len(mappedRDD.partitions()) != 4 {
 		t.Error("Should be one partition per row")
+	}
+
+	expected := []Pair{
+		Pair{"a", 2},
+		Pair{"b", 3},
+		Pair{"c", 4},
+		Pair{"d", 5},
+	}
+
+	actual := make([]Pair, 0)
+	for _, part := range mappedRDD.partitions() {
+		pairs := mappedRDD.compute(part)
+		actual = append(actual, pairs...)
+	}
+	if !reflect.DeepEqual(expected, actual) {
+		t.Error("Map didn't process rdd")
 	}
 }

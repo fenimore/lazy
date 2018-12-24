@@ -55,7 +55,7 @@ type SparkRDD interface {
 type RDD struct {
 	Partitions []Partition
 	Context    *Context
-	parent     SparkRDD
+	// parent     SparkRDD
 	// add context?
 }
 
@@ -88,9 +88,11 @@ type MapRDD struct {
 
 func (rdd MapRDD) compute(p Partition) []Pair {
 	results := make([]Pair, 0)
-	for _, v := range p.Data {
+	parentData := rdd.parent.compute(p)
+	for _, v := range parentData {
 		results = append(results, rdd.fn(v))
 	}
+
 	return results
 }
 

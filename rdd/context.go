@@ -1,7 +1,5 @@
 package lazy
 
-import "fmt"
-
 type Context struct {
 	pool RDD
 	// retries
@@ -31,7 +29,6 @@ func (ctx *Context) RunJob(rdd SparkRDD, fn mapFunction, hd resultHandler) Resul
 	// use a semaphore to compute each partition
 
 	// local execution
-	fmt.Println("what")
 	results := make([]Pair, 0)
 	for _, partition := range rdd.partitions() {
 		// for every partition (if distributed, do this RPC?
