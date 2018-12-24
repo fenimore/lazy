@@ -50,7 +50,7 @@ func main() {
 		network[n] = executor
 		nodes = append(nodes, n)
 	}
-	log.Println("Connected to %d nodes out of %d possible", len(nodes), len(possibleNodes))
+	log.Printf("Connected to %d nodes out of %d possible", len(nodes), len(possibleNodes))
 	logs, err := os.Open("data/flight_edges.tsv")
 	if err != nil {
 		log.Printf("Error Opening File: %s", err)
@@ -66,13 +66,14 @@ func main() {
 	// and account for the remainder
 	// and more than one partition per worker
 	// Partitions are going to be automatically
-	//var partitionSize = 1024 * 1024 * 64 // (64MB)
+	var maxPartitionSize = 1024 * 1024 * 64 // (64MB)
 	var partitionCount = totalBytes / int64(len(nodes))
 	log.Printf(
-		"nodes: %d partitions %d tablesize: %d",
+		"nodes: %d partitions %d tablesize: %d max: %d",
 		len(nodes),
 		partitionCount,
 		totalBytes,
+		maxPartitionSize,
 	)
 
 	// Partition the lines

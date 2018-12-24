@@ -40,8 +40,8 @@ func (e *Executor) Execute(name string, data []byte) (*core.Reply, error) {
 	return reply, err
 }
 
-func (e *Executor) Stow(name string, data []byte) (*core.Reply, error) {
-	var args = &core.StowArgs{Name: name, Data: data}
+func (e *Executor) Stow(filename string, data []byte) (*core.Reply, error) {
+	var args = &core.StowArgs{Filename: filename, Data: data}
 	var reply = new(core.Reply)
 	err := e.client.Call(core.RemoteStow, args, reply)
 

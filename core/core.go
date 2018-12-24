@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -26,33 +27,30 @@ type Args struct {
 }
 
 type StowArgs struct {
-	Name      string
+	Filename  string
 	Partition uint32
 	Data      []byte // raw data
 }
 
-// HandlerName provider the name of the only
-// method that `core` exposes via the RPC
-// interface.
-//
 // This could be replaced by the use of the reflect
 // package (e.g, `reflect.ValueOf(func).Pointer()).Name()`).
 const RemoteExecute = "RemoteExecutor.Execute"
 const RemoteStow = "RemoteExecutor.Stow"
 
-// Handler holds the methods to be exposed by the RPC
+// RemoteExecutor holds the methods to be exposed by the RPC
 // server as well as properties that modify the methods'
 // behavior.
+// All RPC calls are is the exported methods that a RPC client can
+// make use of by calling the RPC server
+//
+// It takes a args and writes to pointer Reply if no error
 type RemoteExecutor struct {
 	StoragePath string
 }
 
-// Execute is the exported method that a RPC client can
-// make use of by calling the RPC server
-//
-// It takes a args and writes to pointer Reply if no error
+// Dummy map job
 func (e *RemoteExecutor) Execute(args Args, reply *Reply) (err error) {
-	log.Printf("Executing %s", args.Name)
+	log.Printf("Executing Job %s", args.Name)
 	if args.Name == "" {
 		err = errors.New("A name must be specified")
 		return
@@ -69,17 +67,24 @@ func (e *RemoteExecutor) Execute(args Args, reply *Reply) (err error) {
 	}
 
 	reply.Ok = true
-	reply.Message = args.Name
+	reply.Message = "ran:map_job"
 	reply.DataLength = len(args.Data)
 
 	return nil
 }
 
+// Stow data partitions
 func (e *RemoteExecutor) Stow(args StowArgs, reply *Reply) (err error) {
 	log.Printf("Stowing Partitioned Data")
 	// do I stow the data in the worker nodes while
 	// the data is being processed?
-	err = ioutil.WriteFile("./tmp/lazy_partition.part", args.Data, 0644)
+	// 1. include partition
+	// 2. mount FS volumn in docker-compose
+	err = ioutil.WriteFile(fmt.Sprintf(
+		"./tmp/%s.part%03d", args.Filename, args.Partition), args.Data, 0644,
+	)
+	reply.DataLength = len(args.Data)
+	reply.Message = "write:partitioned_data"
 
 	return err
 }
