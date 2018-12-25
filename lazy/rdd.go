@@ -29,6 +29,9 @@
 //  */
 package lazy
 
+type MapFunction func(Pair) Pair
+type MapPartitionsFunction func(uint8, Partition) Partition
+
 type Pair struct {
 	// instead of pair, consider
 	// type row interface
@@ -42,7 +45,7 @@ type Partition struct {
 	Data  []Pair
 }
 
-type SparkRDD interface {
+type LazyRDD interface {
 	// ala spec
 	partitions() []Partition
 	//preferredLocations(Partition) []Node
@@ -52,11 +55,14 @@ type SparkRDD interface {
 	compute(Partition) []Pair
 }
 
+//////////////
+// Base RDD //
+//////////////
+// TODO: make a Hadoop, or split file RDD with partitions that were addresses
+
 type RDD struct {
 	Partitions []Partition
 	Context    *Context
-	// parent     SparkRDD
-	// add context?
 }
 
 // Returns a partition after computing
@@ -71,19 +77,42 @@ func (rdd RDD) partitions() []Partition {
 	return rdd.Partitions
 }
 
-type mapFunction func(Pair) Pair
-type mapPartitionsFunction func(uint8, Partition) Partition
-
+// A basic transformation
 func (rdd RDD) mapFunc(fn mapFunction) MapRDD {
-	return MapRDD{rdd, fn}
+	return MapRDD{rdd, fn, rdd.Context}
+}
+
+func (rdd RDD) count() int {
+	mapper := func(pair Pair) Pair {
+		return pair
+	}
+	handler := func(pairs []Pair) Result {
+		return Result{integer: len(pairs)}
+	}
+
+	result := rdd.Context.RunJob(rdd, mapper, handler)
+	return result.integer
+}
+
+func (rdd RDD) collect() []Pair {
+	mapper := func(pair Pair) Pair {
+		return pair
+	}
+	handler := func(pairs []Pair) Result {
+		return Result{list: pairs}
+	}
+
+	result := rdd.Context.RunJob(rdd, mapper, handler)
+	return result.list
 }
 
 ///////////////////////
 // MapPartitions RDD //
 ///////////////////////
 type MapRDD struct {
-	parent SparkRDD
-	fn     mapFunction
+	parent  LazyRDD
+	fn      MapFunction
+	context *Context
 }
 
 func (rdd MapRDD) compute(p Partition) []Pair {
@@ -98,4 +127,32 @@ func (rdd MapRDD) compute(p Partition) []Pair {
 
 func (rdd MapRDD) partitions() []Partition {
 	return rdd.parent.partitions()
+}
+
+func (rdd MapRDD) mapFunc(fn MapFunction) MapRDD {
+	return MapRDD{rdd, fn, rdd.context}
+}
+
+func (rdd MapRDD) count() int {
+	mapper := func(pair Pair) Pair {
+		return pair
+	}
+	handler := func(pairs []Pair) Result {
+		return Result{integer: len(pairs)}
+	}
+
+	result := rdd.context.RunJob(rdd, mapper, handler)
+	return result.integer
+}
+
+func (rdd MapRDD) collect() []Pair {
+	mapper := func(pair Pair) Pair {
+		return pair
+	}
+	handler := func(pairs []Pair) Result {
+		return Result{list: pairs}
+	}
+
+	result := rdd.context.RunJob(rdd, mapper, handler)
+	return result.list
 }

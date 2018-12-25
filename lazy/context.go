@@ -1,14 +1,22 @@
 package lazy
 
+import (
+	"sync"
+
+	"github.com/fenimore/lazy/executor"
+)
+
 type Context struct {
-	pool RDD
+	lock *sync.Mutex
+	// the nodes
+	Nodes []*executor.Executor
 	// retries
 	// serializer
 	// s3_conn
 	// etc
 }
 
-type resultHandler func([]Pair) Result
+type ResultHandler func([]Pair) Result
 
 type Result struct {
 	integer int
@@ -17,28 +25,44 @@ type Result struct {
 
 // princal gateawy into spark context from rdd
 // the mapFunction passed in, is upposed to
-func (ctx *Context) RunJob(rdd SparkRDD, fn mapFunction, hd resultHandler) Result {
-	// acquire a lock
-
+func (ctx *Context) RunJob(rdd LazyRDD, fn MapFunction, hd ResultHandler) Result {
 	// "this is the place to insert proper scheduler"
-	//
-	// First implement local
-	// then implement distributed by building a serialized
-	// task context which is sent to each executor
-
-	// use a semaphore to compute each partition
-
-	// local execution
+	// wg = new(sync.WaitGroup)
+	// lock?
 	results := make([]Pair, 0)
+	if ctx.Nodes == nil {
+		for _, partition := range rdd.partitions() {
+			results = append(results, ExecuteTask(rdd, partition, fn))
+		}
+		final := hd(results)
+		return final
+	}
+
+	nodeIndex := 0
 	for _, partition := range rdd.partitions() {
-		// for every partition (if distributed, do this RPC?
-		for _, row := range rdd.compute(partition) {
-			// compute the row and then do the map "action"
-			results = append(results, fn(row))
+
+		results = append(
+			results,
+			ctx.Nodes[nodeIndex].Execute(rdd, partition, fn),
+		)
+
+		nodeIndex += 1 // n is the node index
+		if idx >= len(ctx.Nodes) {
+			idx = 0
 		}
 	}
-	// release lock
-	return hd(results)
+
+	final := hd(results)
+	return final
+}
+
+// This is implemented in the
+func ExecuteTaskLocally(rdd LazyRDD, part Partition, fn MapFunction) []Pair {
+	results := make([]Pair, 0)
+	for _, row := range rdd.compute(part) {
+		results := append(results, fn(row))
+	}
+	return results
 }
 
 // TODO:

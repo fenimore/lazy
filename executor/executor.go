@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/fenimore/lazy/core"
+	"github.com/fenimore/lazy/lazy"
 )
 
 type Executor struct {
@@ -32,18 +33,15 @@ func (e *Executor) Close() error {
 	return nil
 }
 
-func (e *Executor) Execute(name string, data []byte) (*core.Reply, error) {
-	var args = &core.Args{Name: name, Data: data}
+func (e *Executor) Execute(rdd lazy.RDD, part lazy.Partition, fn MapFunction) (*core.Reply, error) {
+	var args = &core.Args{
+		Name:      "Running Lazy job",
+		RDD:       rdd,
+		Partition: part,
+		Mapper:    fn,
+	}
 	var reply = new(core.Reply)
-	err := e.client.Call(core.RemoteExecute, args, reply)
-
-	return reply, err
-}
-
-func (e *Executor) Stow(filename string, data []byte) (*core.Reply, error) {
-	var args = &core.StowArgs{Filename: filename, Data: data}
-	var reply = new(core.Reply)
-	err := e.client.Call(core.RemoteStow, args, reply)
+	err := e.client.Call(core.RemoteRunJob, args, reply)
 
 	return reply, err
 }

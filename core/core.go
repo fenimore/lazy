@@ -3,27 +3,26 @@
 package core
 
 import (
-	"bufio"
-	"bytes"
-	"errors"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/fenimore/lazy/lazy"
 )
 
 type Reply struct {
-	Message    string
-	Ok         bool
-	DataLength int
+	Results []lazy.Pair
+	Message string
+	Ok      bool
 }
 
 type Args struct {
 	Name      string
-	Partition uint32
-	Data      []byte
+	RDD       lazy.LazyRDD
+	Partition lazy.Partition
+	Mapper    lazy.MapFunction
+	Handler   lazy.ResultsHandler
 }
 
 type StowArgs struct {
@@ -34,8 +33,7 @@ type StowArgs struct {
 
 // This could be replaced by the use of the reflect
 // package (e.g, `reflect.ValueOf(func).Pointer()).Name()`).
-const RemoteExecute = "RemoteExecutor.Execute"
-const RemoteStow = "RemoteExecutor.Stow"
+const RemoteRunJob = "RemoteExecutor.RunJob"
 
 // RemoteExecutor holds the methods to be exposed by the RPC
 // server as well as properties that modify the methods'
@@ -45,48 +43,24 @@ const RemoteStow = "RemoteExecutor.Stow"
 //
 // It takes a args and writes to pointer Reply if no error
 type RemoteExecutor struct {
+	// should this be the spark context?
 	StoragePath string
 }
 
 // Dummy map job
-func (e *RemoteExecutor) Execute(args Args, reply *Reply) (err error) {
+func (e *RemoteExecutor) RunJob(args Args, reply *Reply) (err error) {
 	log.Printf("Executing Job %s", args.Name)
-	if args.Name == "" {
-		err = errors.New("A name must be specified")
-		return
+
+	results := make([]lazy.Pair, 0)
+	for _, row := range rdd.compute(part) {
+		results := append(results, fn(row))
 	}
 
-	scanner := bufio.NewScanner(bytes.NewReader(args.Data))
-
-	result := make([]byte, 0)
-	for scanner.Scan() {
-		row := scanner.Bytes()
-		// map rows
-		// k, v := args.Map.MapRow(row)
-		result = append(result, row...)
-	}
-
+	reply.Results = results
 	reply.Ok = true
 	reply.Message = "ran:map_job"
-	reply.DataLength = len(args.Data)
 
 	return nil
-}
-
-// Stow data partitions
-func (e *RemoteExecutor) Stow(args StowArgs, reply *Reply) (err error) {
-	log.Printf("Stowing Partitioned Data")
-	// do I stow the data in the worker nodes while
-	// the data is being processed?
-	// 1. include partition
-	// 2. mount FS volumn in docker-compose
-	err = ioutil.WriteFile(fmt.Sprintf(
-		"./tmp/%s.part%03d", args.Filename, args.Partition), args.Data, 0644,
-	)
-	reply.DataLength = len(args.Data)
-	reply.Message = "write:partitioned_data"
-
-	return err
 }
 
 // handle interrupts from os in background goroutine
