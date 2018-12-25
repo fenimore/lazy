@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/fenimore/lazy/core"
+	"github.com/fenimore/lazy/lazy"
 )
 
 type Worker struct {
@@ -29,6 +30,7 @@ func (w *Worker) Work() (err error) {
 	rpc.Register(&core.RemoteExecutor{
 		StoragePath: w.StoragePath,
 	})
+	rpc.Register(lazy.RDD{})
 
 	w.listener, err = net.Listen("tcp", ":"+strconv.Itoa(w.Port))
 	if err != nil {
