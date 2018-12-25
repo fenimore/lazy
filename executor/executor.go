@@ -33,7 +33,7 @@ func (e *Executor) Close() error {
 	return nil
 }
 
-func (e *Executor) Execute(rdd lazy.RDD, part lazy.Partition, fn MapFunction) (*core.Reply, error) {
+func (e *Executor) Execute(rdd lazy.LazyRDD, part lazy.Partition, fn lazy.MapFunction) (*core.Reply, error) {
 	var args = &core.Args{
 		Name:      "Running Lazy job",
 		RDD:       rdd,

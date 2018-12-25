@@ -35,7 +35,7 @@ func main() {
 		node{"127.0.0.1", 7072},
 		node{"127.0.0.1", 7071},
 	} // distributed... ports
-	log.Printf("Connecting to cluster of workers %v", nodes)
+	log.Printf("Connecting to cluster of workers %v", possibleNodes)
 	var network = make([]*executor.Executor, 0)
 
 	for _, n := range possibleNodes {
@@ -47,9 +47,9 @@ func main() {
 			log.Println(err)
 			continue
 		}
-		network = append(network, n)
+		network = append(network, executor)
 	}
-	log.Printf("Connected to %d nodes out of %d possible", len(nodes), len(possibleNodes))
+	log.Printf("Connected to %d nodes out of %d possible", len(network), len(possibleNodes))
 
 	// TODO: move this into, context readText or whatever
 	logs, err := os.Open("data/flight_edges.tsv")
@@ -57,7 +57,7 @@ func main() {
 		log.Printf("Error Opening File: %s", err)
 	}
 	defer logs.Close()
-	lineCount, err := lineCount(logs)
+	lineCount, err := lineCounter(logs)
 	if err != nil {
 		log.Printf("Error Getting Line Count: %s", err)
 	}
@@ -65,11 +65,11 @@ func main() {
 	if err != nil {
 		log.Printf("Error Opening File: %s", err)
 	}
-	linesPerPartition := lineCount / len(nodes)
-	scanner, _ := bufio.NewScanner(logs)
+	linesPerPartition := lineCount / len(network)
+	scanner := bufio.NewScanner(logs)
 	partitions := make([]lazy.Partition, 0)
 	pairs := make([]lazy.Pair, 0)
-	index := 0
+	index := uint16(0)
 	for scanner.Scan() {
 		line := scanner.Text()
 		pairs = append(pairs, lazy.Pair{line, 1})
@@ -78,10 +78,21 @@ func main() {
 		}
 	}
 
+	networkId := 0
 	ctx := new(lazy.Context)
-	ctx.Nodes = network
-	rdd := lazy.RDD{partitions, ctx}
-	data := rdd.collect()
+	ctx.RunTask = func(rdd lazy.LazyRDD, part lazy.Partition, fn lazy.MapFunction) []lazy.Pair {
+		reply, err := network[networkId].Execute(rdd, part, fn)
+		if err != nil {
+			log.Printf("Error with RPC %s", err)
+		}
+		networkId++
+		if networkId == len(network) {
+			networkId = 0
+		}
+		return reply.Results
+	}
+	rdd := lazy.NewRDD(ctx, partitions)
+	_ = rdd.Collect()
 
 	core.HandleInterrupt()
 }

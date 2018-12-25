@@ -14,8 +14,9 @@ func TestParallelizeSplitsEvenly(t *testing.T) {
 	}
 
 	ctx := new(Context)
+	ctx.RunTask = ExecuteTaskLocally
 	rdd := ctx.Parallelize(testData, 4)
-	if len(rdd.Partitions) != 4 {
+	if len(rdd.partitions) != 4 {
 		t.Error("Should be one partition per row")
 	}
 }
@@ -30,7 +31,7 @@ func TestParallelizesOnePartition(t *testing.T) {
 
 	ctx := new(Context)
 	rdd := ctx.Parallelize(testData, 1)
-	if len(rdd.Partitions) != 1 {
+	if len(rdd.partitions) != 1 {
 		t.Error("Should be one partition")
 	}
 }
@@ -43,6 +44,7 @@ func TestRunJobCount(t *testing.T) {
 		Pair{"d", 4},
 	}
 	ctx := new(Context)
+	ctx.RunTask = ExecuteTaskLocally
 	rdd := ctx.Parallelize(testData, 4)
 	mapper := func(pair Pair) Pair {
 		return pair
@@ -64,6 +66,7 @@ func TestRunJobCollect(t *testing.T) {
 		Pair{"d", 4},
 	}
 	ctx := new(Context)
+	ctx.RunTask = ExecuteTaskLocally
 	rdd := ctx.Parallelize(testData, 4)
 	mapper := func(pair Pair) Pair {
 		return pair

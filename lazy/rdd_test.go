@@ -14,8 +14,9 @@ func TestRDDCount(t *testing.T) {
 	}
 
 	ctx := new(Context)
+	ctx.RunTask = ExecuteTaskLocally
 	rdd := ctx.Parallelize(testData, 4)
-	if rdd.count() != 4 {
+	if rdd.Count() != 4 {
 		t.Error()
 	}
 }
@@ -29,10 +30,11 @@ func TestRDDCollect(t *testing.T) {
 	}
 
 	ctx := new(Context)
+	ctx.RunTask = ExecuteTaskLocally
 	rdd := ctx.Parallelize(testData, 4)
 
 	actual := make([]Pair, 0)
-	for _, pair := range rdd.collect() {
+	for _, pair := range rdd.Collect() {
 		actual = append(actual, pair)
 	}
 	if !reflect.DeepEqual(testData, actual) {
@@ -51,15 +53,16 @@ func TestMapRDDComputes(t *testing.T) {
 	}
 
 	ctx := new(Context)
+	ctx.RunTask = ExecuteTaskLocally
 	rdd := ctx.Parallelize(testData, 4)
-	mappedRDD := rdd.mapFunc(func(row Pair) Pair {
+	mappedRDD := rdd.MapFunc(func(row Pair) Pair {
 		return Pair{
 			row.Key,
 			row.Val + 1,
 		}
 	})
 
-	if len(mappedRDD.partitions()) != 4 {
+	if len(mappedRDD.Partitions()) != 4 {
 		t.Error("Should be one partition per row")
 	}
 
@@ -71,8 +74,8 @@ func TestMapRDDComputes(t *testing.T) {
 	}
 
 	actual := make([]Pair, 0)
-	for _, part := range mappedRDD.partitions() {
-		pairs := mappedRDD.compute(part)
+	for _, part := range mappedRDD.Partitions() {
+		pairs := mappedRDD.Compute(part)
 		actual = append(actual, pairs...)
 	}
 	if !reflect.DeepEqual(expected, actual) {
@@ -89,15 +92,16 @@ func TestMapRDDCount(t *testing.T) {
 	}
 
 	ctx := new(Context)
+	ctx.RunTask = ExecuteTaskLocally
 	rdd := ctx.Parallelize(testData, 4)
-	mappedRDD := rdd.mapFunc(func(row Pair) Pair {
+	mappedRDD := rdd.MapFunc(func(row Pair) Pair {
 		return Pair{
 			row.Key,
 			row.Val + 1,
 		}
 	})
 
-	if mappedRDD.count() != 4 {
+	if mappedRDD.Count() != 4 {
 		t.Error()
 	}
 }
@@ -111,8 +115,9 @@ func TestMapRDDCollect(t *testing.T) {
 	}
 
 	ctx := new(Context)
+	ctx.RunTask = ExecuteTaskLocally
 	rdd := ctx.Parallelize(testData, 4)
-	mappedRDD := rdd.mapFunc(func(row Pair) Pair {
+	mappedRDD := rdd.MapFunc(func(row Pair) Pair {
 		return Pair{
 			row.Key,
 			row.Val,
@@ -120,7 +125,7 @@ func TestMapRDDCollect(t *testing.T) {
 	})
 
 	actual := make([]Pair, 0)
-	for _, pair := range mappedRDD.collect() {
+	for _, pair := range mappedRDD.Collect() {
 		actual = append(actual, pair)
 	}
 	if !reflect.DeepEqual(testData, actual) {
@@ -145,7 +150,7 @@ func TestChainMapRDD(t *testing.T) {
 
 	ctx := new(Context)
 	rdd := ctx.Parallelize(testData, 1)
-	mappedRDD := rdd.mapFunc(mapper).mapFunc(mapper)
+	mappedRDD := rdd.MapFunc(mapper).MapFunc(mapper)
 
 	expected := []Pair{
 		Pair{"a", 3},
@@ -155,8 +160,8 @@ func TestChainMapRDD(t *testing.T) {
 	}
 
 	actual := make([]Pair, 0)
-	for _, part := range mappedRDD.partitions() {
-		pairs := mappedRDD.compute(part)
+	for _, part := range mappedRDD.Partitions() {
+		pairs := mappedRDD.Compute(part)
 		actual = append(actual, pairs...)
 	}
 	if !reflect.DeepEqual(expected, actual) {

@@ -22,13 +22,6 @@ type Args struct {
 	RDD       lazy.LazyRDD
 	Partition lazy.Partition
 	Mapper    lazy.MapFunction
-	Handler   lazy.ResultsHandler
-}
-
-type StowArgs struct {
-	Filename  string
-	Partition uint32
-	Data      []byte // raw data
 }
 
 // This could be replaced by the use of the reflect
@@ -52,8 +45,8 @@ func (e *RemoteExecutor) RunJob(args Args, reply *Reply) (err error) {
 	log.Printf("Executing Job %s", args.Name)
 
 	results := make([]lazy.Pair, 0)
-	for _, row := range rdd.compute(part) {
-		results := append(results, fn(row))
+	for _, row := range args.RDD.Compute(args.Partition) {
+		results = append(results, args.Mapper(row))
 	}
 
 	reply.Results = results

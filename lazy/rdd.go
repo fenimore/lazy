@@ -47,12 +47,12 @@ type Partition struct {
 
 type LazyRDD interface {
 	// ala spec
-	partitions() []Partition
+	Partitions() []Partition
 	//preferredLocations(Partition) []Node
 	//dependencies() []Dependencies
 	//partitioner() MetaData
 	// nestpas?
-	compute(Partition) []Pair
+	Compute(Partition) []Pair
 }
 
 //////////////
@@ -61,28 +61,32 @@ type LazyRDD interface {
 // TODO: make a Hadoop, or split file RDD with partitions that were addresses
 
 type RDD struct {
-	Partitions []Partition
+	partitions []Partition
 	Context    *Context
+}
+
+func NewRDD(ctx *Context, parts []Partition) RDD {
+	return RDD{partitions: parts, Context: ctx}
 }
 
 // Returns a partition after computing
 // whatever it is your doing with the partition
-func (rdd RDD) compute(p Partition) []Pair {
+func (rdd RDD) Compute(p Partition) []Pair {
 	// so if this was a MapParititionRDD, the computer
 	// would compute the parent RDD and then do func on this one
 	return p.Data
 }
 
-func (rdd RDD) partitions() []Partition {
-	return rdd.Partitions
+func (rdd RDD) Partitions() []Partition {
+	return rdd.partitions
 }
 
 // A basic transformation
-func (rdd RDD) mapFunc(fn mapFunction) MapRDD {
+func (rdd RDD) MapFunc(fn MapFunction) MapRDD {
 	return MapRDD{rdd, fn, rdd.Context}
 }
 
-func (rdd RDD) count() int {
+func (rdd RDD) Count() int {
 	mapper := func(pair Pair) Pair {
 		return pair
 	}
@@ -94,7 +98,7 @@ func (rdd RDD) count() int {
 	return result.integer
 }
 
-func (rdd RDD) collect() []Pair {
+func (rdd RDD) Collect() []Pair {
 	mapper := func(pair Pair) Pair {
 		return pair
 	}
@@ -115,9 +119,9 @@ type MapRDD struct {
 	context *Context
 }
 
-func (rdd MapRDD) compute(p Partition) []Pair {
+func (rdd MapRDD) Compute(p Partition) []Pair {
 	results := make([]Pair, 0)
-	parentData := rdd.parent.compute(p)
+	parentData := rdd.parent.Compute(p)
 	for _, v := range parentData {
 		results = append(results, rdd.fn(v))
 	}
@@ -125,15 +129,15 @@ func (rdd MapRDD) compute(p Partition) []Pair {
 	return results
 }
 
-func (rdd MapRDD) partitions() []Partition {
-	return rdd.parent.partitions()
+func (rdd MapRDD) Partitions() []Partition {
+	return rdd.parent.Partitions()
 }
 
-func (rdd MapRDD) mapFunc(fn MapFunction) MapRDD {
+func (rdd MapRDD) MapFunc(fn MapFunction) MapRDD {
 	return MapRDD{rdd, fn, rdd.context}
 }
 
-func (rdd MapRDD) count() int {
+func (rdd MapRDD) Count() int {
 	mapper := func(pair Pair) Pair {
 		return pair
 	}
@@ -145,7 +149,7 @@ func (rdd MapRDD) count() int {
 	return result.integer
 }
 
-func (rdd MapRDD) collect() []Pair {
+func (rdd MapRDD) Collect() []Pair {
 	mapper := func(pair Pair) Pair {
 		return pair
 	}

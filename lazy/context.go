@@ -2,14 +2,12 @@ package lazy
 
 import (
 	"sync"
-
-	"github.com/fenimore/lazy/executor"
 )
 
+// TODO; default constructor
 type Context struct {
-	lock *sync.Mutex
-	// the nodes
-	Nodes []*executor.Executor
+	lock    *sync.Mutex
+	RunTask func(LazyRDD, Partition, MapFunction) []Pair
 	// retries
 	// serializer
 	// s3_conn
@@ -29,27 +27,19 @@ func (ctx *Context) RunJob(rdd LazyRDD, fn MapFunction, hd ResultHandler) Result
 	// "this is the place to insert proper scheduler"
 	// wg = new(sync.WaitGroup)
 	// lock?
+	// if ctx.Nodes == nil {
+	//	for _, partition := range rdd.partitions() {
+	//		results = append(results, ExecuteTask(rdd, partition, fn))
+	//	}
+	//	final := hd(results)
+	//	return final
+	// }
 	results := make([]Pair, 0)
-	if ctx.Nodes == nil {
-		for _, partition := range rdd.partitions() {
-			results = append(results, ExecuteTask(rdd, partition, fn))
-		}
-		final := hd(results)
-		return final
-	}
-
-	nodeIndex := 0
-	for _, partition := range rdd.partitions() {
-
+	for _, partition := range rdd.Partitions() {
 		results = append(
 			results,
-			ctx.Nodes[nodeIndex].Execute(rdd, partition, fn),
+			ctx.RunTask(rdd, partition, fn)...,
 		)
-
-		nodeIndex += 1 // n is the node index
-		if idx >= len(ctx.Nodes) {
-			idx = 0
-		}
 	}
 
 	final := hd(results)
@@ -59,8 +49,8 @@ func (ctx *Context) RunJob(rdd LazyRDD, fn MapFunction, hd ResultHandler) Result
 // This is implemented in the
 func ExecuteTaskLocally(rdd LazyRDD, part Partition, fn MapFunction) []Pair {
 	results := make([]Pair, 0)
-	for _, row := range rdd.compute(part) {
-		results := append(results, fn(row))
+	for _, row := range rdd.Compute(part) {
+		results = append(results, fn(row))
 	}
 	return results
 }
