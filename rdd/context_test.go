@@ -2,6 +2,7 @@ package lazy
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -44,13 +45,17 @@ func TestRunJobCount(t *testing.T) {
 		Pair{"d", 4},
 	}
 	ctx := new(Context)
-	ctx.RunTask = ExecuteTaskLocally
 	rdd := ctx.Parallelize(testData, 4)
+
 	mapper := func(pair Pair) Pair {
 		return pair
 	}
-	handler := func(pairs []Pair) Result {
-		return Result{integer: len(pairs)}
+	handler := func(ch chan Pair) Result {
+		count := 0
+		for _ = range ch {
+			count++
+		}
+		return Result{integer: count}
 	}
 
 	if ctx.RunJob(rdd, mapper, handler).integer != 4 {
@@ -71,11 +76,20 @@ func TestRunJobCollect(t *testing.T) {
 	mapper := func(pair Pair) Pair {
 		return pair
 	}
-	handler := func(pairs []Pair) Result {
+
+	handler := func(ch chan Pair) Result {
+		pairs := make([]Pair, 0)
+		for pair := range ch {
+			pairs = append(pairs, pair)
+		}
 		return Result{list: pairs}
 	}
 
-	if !reflect.DeepEqual(ctx.RunJob(rdd, mapper, handler).list, testData) {
+	actual := ctx.RunJob(rdd, mapper, handler).list
+	sort.Slice(actual, func(i, j int) bool {
+		return actual[i].Val < actual[j].Val
+	})
+	if !reflect.DeepEqual(actual, testData) {
 		t.Error("Should just return the same RDD pairs")
 	}
 }

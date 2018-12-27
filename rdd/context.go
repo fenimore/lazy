@@ -14,7 +14,7 @@ type Context struct {
 	// etc
 }
 
-type ResultHandler func([]Pair) Result
+type ResultHandler func(chan Pair) Result
 
 type Result struct {
 	integer int
@@ -24,33 +24,30 @@ type Result struct {
 // princal gateawy into spark context from rdd
 // the mapFunction passed in, is upposed to
 func (ctx *Context) RunJob(rdd LazyRDD, fn MapFunction, hd ResultHandler) Result {
-	// "this is the place to insert proper scheduler"
-	// wg = new(sync.WaitGroup)
-	// lock?
-	// if ctx.Nodes == nil {
-	//	for _, partition := range rdd.partitions() {
-	//		results = append(results, ExecuteTask(rdd, partition, fn))
-	//	}
-	//	final := hd(results)
-	//	return final
-	// }
-	results := make([]Pair, 0)
+	wg := new(sync.WaitGroup)
+	results := make(chan Pair, 1024) // needs big buffer
 	for _, partition := range rdd.Partitions() {
-		results = append(
-			results,
-			ctx.RunTask(rdd, partition, fn)...,
-		)
+		wg.Add(1)
+		go ExecuteTaskGoroutine(results, wg, rdd, partition, fn)
 	}
+	wg.Wait()
+	close(results)
+	return hd(results)
+}
 
-	final := hd(results)
-	return final
+// This is implemented in the
+func ExecuteTaskGoroutine(ch chan Pair, wg *sync.WaitGroup, rdd LazyRDD, part Partition, fn MapFunction) {
+	for _, row := range rdd.Compute(part) {
+		ch <- fn(row)
+	}
+	wg.Done()
 }
 
 // This is implemented in the
 func ExecuteTaskLocally(rdd LazyRDD, part Partition, fn MapFunction) []Pair {
 	results := make([]Pair, 0)
 	for _, row := range rdd.Compute(part) {
-		results = append(results, fn(row))
+		results = appendb(results, fn(row))
 	}
 	return results
 }
