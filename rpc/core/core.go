@@ -19,10 +19,11 @@ type Reply struct {
 
 type Args struct {
 	Name      string
-	RDD       lazy.LazyRDD
-	Partition lazy.Partition
+	Partition []byte
 	Mapper    lazy.MapFunction
 }
+
+type LazyContext struct{}
 
 // This could be replaced by the use of the reflect
 // package (e.g, `reflect.ValueOf(func).Pointer()).Name()`).

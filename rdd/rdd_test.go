@@ -2,6 +2,7 @@ package lazy
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -37,6 +38,9 @@ func TestRDDCollect(t *testing.T) {
 	for _, pair := range rdd.Collect() {
 		actual = append(actual, pair)
 	}
+	sort.Slice(actual, func(i, j int) bool {
+		return actual[i].Val < actual[j].Val
+	})
 	if !reflect.DeepEqual(testData, actual) {
 		t.Error("Map didn't process rdd")
 	}
@@ -128,6 +132,9 @@ func TestMapRDDCollect(t *testing.T) {
 	for _, pair := range mappedRDD.Collect() {
 		actual = append(actual, pair)
 	}
+	sort.Slice(actual, func(i, j int) bool {
+		return actual[i].Val < actual[j].Val
+	})
 	if !reflect.DeepEqual(testData, actual) {
 		t.Error("Map didn't process rdd")
 	}

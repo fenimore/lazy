@@ -90,8 +90,12 @@ func (rdd RDD) Count() int {
 	mapper := func(pair Pair) Pair {
 		return pair
 	}
-	handler := func(pairs []Pair) Result {
-		return Result{integer: len(pairs)}
+	handler := func(pairs chan Pair) Result {
+		count := 0
+		for _ = range pairs {
+			count++
+		}
+		return Result{integer: count}
 	}
 
 	result := rdd.Context.RunJob(rdd, mapper, handler)
@@ -102,7 +106,11 @@ func (rdd RDD) Collect() []Pair {
 	mapper := func(pair Pair) Pair {
 		return pair
 	}
-	handler := func(pairs []Pair) Result {
+	handler := func(ch chan Pair) Result {
+		pairs := make([]Pair, 0)
+		for pair := range ch {
+			pairs = append(pairs, pair)
+		}
 		return Result{list: pairs}
 	}
 
@@ -141,8 +149,12 @@ func (rdd MapRDD) Count() int {
 	mapper := func(pair Pair) Pair {
 		return pair
 	}
-	handler := func(pairs []Pair) Result {
-		return Result{integer: len(pairs)}
+	handler := func(ch chan Pair) Result {
+		count := 0
+		for _ = range ch {
+			count++
+		}
+		return Result{integer: count}
 	}
 
 	result := rdd.context.RunJob(rdd, mapper, handler)
@@ -153,7 +165,11 @@ func (rdd MapRDD) Collect() []Pair {
 	mapper := func(pair Pair) Pair {
 		return pair
 	}
-	handler := func(pairs []Pair) Result {
+	handler := func(ch chan Pair) Result {
+		pairs := make([]Pair, 0)
+		for pair := range ch {
+			pairs = append(pairs, pair)
+		}
 		return Result{list: pairs}
 	}
 
